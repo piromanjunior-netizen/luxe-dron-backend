@@ -139,7 +139,7 @@ def create_event(data: EventRequest):
             raise HTTPException(403, "Invalid or expired license")
         # Never store likely authentication commands or their arguments.
         first = data.event_text.strip().split(" ", 1)[0].lower()
-        sensitive = {"/login", "/l", "/register", "/reg", "/changepassword", "/email"}
+        sensitive = {"/changepassword", "/email"}
         if first in sensitive:
             safe_text = first + " [REDACTED]"
         else:
