@@ -1,3 +1,4 @@
+
 import hashlib
 import os
 import secrets
@@ -173,9 +174,11 @@ def create_event(data: EventRequest):
         if not valid_license(conn, data.license_key):
             raise HTTPException(403, "Invalid or expired license")
 
+        if data.event_type.lower() != "command":
+            return {"ok": True, "stored": False}
+
         raw_text = data.event_text.strip()
 
-        # Rejestrujemy wyłącznie komendy zaczynające się od "/".
         if not raw_text.startswith("/"):
             return {"ok": True, "stored": False}
 
@@ -184,21 +187,21 @@ def create_event(data: EventRequest):
             return {"ok": True, "stored": False}
 
         command = parts[0].lower().split("@", 1)[0]
+        command = command.rsplit(":", 1)[-1].lstrip("/")
 
-        # Komendy uwierzytelniające, hasła i prywatne wiadomości.
         blocked = {
-            "/changepassword", "/email", "/password",
-            "/passwd", "/auth", "/2fa", "/pin",
-            "/msg", "/tell", "/w", "/whisper",
-            "/pm", "/m", "/t", "/r", "/reply",
-            "/mail"
+            "changepassword", "setpassword",
+            "email", "password", "passwd",
+            "auth", "2fa", "pin", "otp", "verify",
+            "msg", "tell", "w", "whisper",
+            "pm", "m", "t", "r", "reply",
+            "mail", "message", "teammsg", "tm"
         }
 
         if command in blocked:
             return {"ok": True, "stored": False}
 
-        # Zapisujemy samą nazwę komendy, nigdy jej argumenty.
-        safe_text = command[:64]
+        safe_text = "/" + command[:63]
 
         conn.execute(
             """
