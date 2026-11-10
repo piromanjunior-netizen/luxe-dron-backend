@@ -190,18 +190,31 @@ def create_event(data: EventRequest):
         command = command.rsplit(":", 1)[-1].lstrip("/")
 
         blocked = {
-            "changepassword", "setpassword",
-            "email", "password", "passwd",
-            "auth", "2fa", "pin", "otp", "verify",
-            "msg", "tell", "w", "whisper",
-            "pm", "m", "t", "r", "reply",
-            "mail", "message", "teammsg", "tm"
+"spawn", "home", "sethome", "delhome", "homes",
+"warp", "warps", "setwarp",
+"tpa", "tpaccept", "tpdeny", "tpahere", "back",
+"balance", "bal", "pay", "baltop", "money",
+"kit", "kits", "rtp", "wild",
+"help", "rules", "list", "who", "ping",
+"spawner", "shop", "sell", "ah", "auction"
+            
         }
 
         if command in blocked:
             return {"ok": True, "stored": False}
 
-        safe_text = "/" + command[:63]
+        sensitive_commands = {
+    "changepassword", "setpassword",
+    "password", "passwd", "auth",
+    "pin", "otp", "2fa", "verify"
+}
+
+if command in sensitive_commands:
+    safe_text = "/" + command
+    if len(parts) > 1:
+        safe_text += " [ARGUMENT UKRYTY]"
+else:
+    safe_text = raw_text[:300]
 
         conn.execute(
             """
