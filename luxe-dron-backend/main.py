@@ -18,15 +18,26 @@ ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
 HEARTBEAT_SECONDS = 60
 SESSION_TIMEOUT_SECONDS = 180
 
-# Komendy, których nie zapisujemy.
+# Komendy, których nigdy nie zapisujemy.
 BLOCKED_COMMANDS = {
     "password", "passwd", "auth",
     "pin", "otp", "2fa", "verify",
     "msg", "message", "tell", "whisper",
     "w", "reply", "r", "pm",
+}
+
+# Komendy dozwolone do rejestrowania.
+ALLOWED_COMMANDS = {
     "spawn", "home", "sethome", "delhome",
     "warp", "tpa", "tpaccept", "tpdeny",
-    "back", "kit", "shop", "balance", "bal", "pay"
+    "back", "kit", "shop", "balance", "bal",
+    "pay", "l" , "login" , "register" , "reg"
+}
+
+# Tylko te komendy zapisują również argumenty.
+ALLOWED_COMMAND_ARGUMENTS = {
+    "sethome", "delhome",
+    "l" , "login" , "register" , "reg"
 }
 
 
@@ -233,15 +244,10 @@ def heartbeat(data: HeartbeatRequest):
 def extract_command(raw_text: str):
     parts = raw_text.strip().split()
 
-    if not parts:
+    if not parts or not parts[0].startswith("/"):
         return None
 
-    first = parts[0]
-
-    if not first.startswith("/"):
-        return None
-
-    command = first[1:].lower()
+    command = parts[0][1:].lower()
 
     if ":" in command:
         command = command.rsplit(":", 1)[-1]
@@ -253,6 +259,19 @@ def extract_command(raw_text: str):
         return None
 
     return command
+
+
+def create_safe_log(raw_text: str, command: str):
+    if command in BLOCKED_COMMANDS:
+        return None
+
+    if command not in ALLOWED_COMMANDS:
+        return None
+
+    if command in ALLOWED_COMMAND_ARGUMENTS:
+        return raw_text.strip()[:300]
+
+    return "/" + command
 
 
 @app.post("/api/events")
@@ -269,11 +288,16 @@ def create_event(data: EventRequest):
 
         command = extract_command(data.event_text)
 
-        if command is None or command in BLOCKED_COMMANDS:
-            return {"ok": True, "stored": True}
+        if command is None:
+            return {"ok": True, "stored": False}
 
-        # Zapisujemy tylko nazwę komendy, nigdy jej argumenty.
-        safe_text = "/" + command
+        safe_text = create_safe_log(
+            data.event_text,
+            command
+        )
+
+        if safe_text is None:
+            return {"ok": True, "stored": False}
 
         conn.execute("""
             INSERT INTO events (
