@@ -204,9 +204,7 @@ def create_event(data: EventRequest):
             return {"ok": True, "stored": False}
 
         sensitive_commands = {
-    "changepassword", "setpassword",
-    "password", "passwd", "auth",
-    "pin", "otp", "2fa", "verify"
+    "changepassword", "setpassword"
 }
 
 if command in sensitive_commands:
